@@ -1,0 +1,18 @@
+# 오프라인 패키지 백업 (241MB, git 제외)
+pkg files/
+
+# Python 캐시
+__pycache__/
+*.pyc
+*.pyo
+
+# 임시 출력 파일
+*.txt
+!README.md
+
+# IDE
+.vscode/
+.idea/
+
+# Claude 내부 파일
+.claude/
