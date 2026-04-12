@@ -30,9 +30,8 @@ from master.master_data_loader import MasterDataLoader
 from core.email_parser import EmailParser
 from core.receipt_parser import ReceiptParser
 from core.cross_validator import CrossValidator
-from notifier.email_notifier import EmailNotifier
 from models.check_result import CheckResult, CheckStatus
-from core.results_writer import write_result
+from core.results_writer import write_result, write_txt_report
 
 STATUS_ICON = {
     "OK": "✅", "WARN": "⚠️ ", "FAIL": "❌", "INFO": "ℹ️ ", "SKIP": "⏭️ ",
@@ -64,8 +63,6 @@ def print_result(result: CheckResult, use_color: bool = True) -> None:
 def process_single(email_path: str, receipt_path: str,
                    master: MasterDataLoader,
                    use_ocr: bool = False,
-                   use_mock_notify: bool = True,
-                   no_notify: bool = False,
                    output_json: bool = False) -> CheckResult:
 
     t0 = time.perf_counter()
@@ -199,22 +196,15 @@ def process_single(email_path: str, receipt_path: str,
         }, ensure_ascii=False, indent=2))
     else:
         print_result(result)
-        notified = False
-        if result.has_violation() and not no_notify:
-            notifier = EmailNotifier(use_mock=use_mock_notify)
-            log.info(f"[NOTIFY] 위반 사항 통보 이메일 발송 → {result.submitter_email}")
-            notifier.notify(result)
-            log.info(f"[NOTIFY] 통보 완료")
-            notified = True
-        elif not result.has_violation():
-            log.info(f"[NOTIFY] 위반 없음 - 통보 생략")
-        else:
-            log.info(f"[NOTIFY] --no-notify 옵션으로 통보 생략")
+
+        # ── TXT 리포트 저장 ───────────────────────────────────────────
+        txt_path = write_txt_report(email, receipt, result)
+        log.info(f"[REPORT] TXT 리포트 저장: {txt_path.name}")
 
         # ── results CSV 기록 ──────────────────────────────────────────
         from datetime import datetime
         ts = datetime.now().strftime("%Y-%m-%d %H:%M")
-        write_result(ts, email, receipt, result, notified)
+        write_result(ts, email, receipt, result, txt_saved=True)
         log.info(f"[RESULT] checker results.csv 기록 완료")
 
     log.info(f"[END]   처리 완료: {email.email_id}")
@@ -240,8 +230,6 @@ def main():
   # JSON 출력
   python main.py --email test_data/emails/email_vat_violation.json --receipt test_data/receipts/receipt_mock_02.json --json
 
-  # 점검만 (통보 없이)
-  python main.py --all-emails --mock-receipts --no-notify
         """
     )
     parser.add_argument("--email", help="이메일 JSON 파일 경로")
@@ -250,7 +238,6 @@ def main():
     parser.add_argument("--all-emails", action="store_true", help="test_data/emails/ 전체 처리")
     parser.add_argument("--mock-receipts", action="store_true", help="test_data/receipts/ mock JSON 자동 매칭")
     parser.add_argument("--json", action="store_true", help="JSON 형식 출력")
-    parser.add_argument("--no-notify", action="store_true", help="이메일 통보 비활성화")
     args = parser.parse_args()
 
     from core.logger import CSV_LOG_FILE
@@ -271,8 +258,6 @@ def main():
         for e_path, r_path in pairs:
             res = process_single(e_path, r_path, master,
                                  use_ocr=args.use_ocr,
-                                 use_mock_notify=True,
-                                 no_notify=args.no_notify,
                                  output_json=args.json)
             if res is not None:
                 all_results.append(res)
@@ -290,8 +275,6 @@ def main():
     elif args.email:
         process_single(args.email, args.receipt or "", master,
                        use_ocr=args.use_ocr,
-                       use_mock_notify=not args.no_notify,
-                       no_notify=args.no_notify,
                        output_json=args.json)
     else:
         parser.print_help()
