@@ -68,8 +68,8 @@ def write_txt_report(email: EmailData,
     내용: 기본 정보 + 오류(FAIL) + 보완필요(WARN)
     """
     REPORTS_DIR.mkdir(parents=True, exist_ok=True)
-    safe_id = result.email_id.replace("/", "-").replace("\\", "-")
-    txt_path = REPORTS_DIR / f"{safe_id}.txt"
+    date_str = email.payment.payment_date.replace("-", "")  # YYYYMMDD
+    txt_path = REPORTS_DIR / f"{date_str}_{email.submitter.knox_id}_{email.samsung_doc_no}.txt"
 
     now = datetime.now().strftime("%Y-%m-%d %H:%M")
     summary = result.summary()
