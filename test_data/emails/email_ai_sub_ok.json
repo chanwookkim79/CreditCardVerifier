@@ -1,0 +1,47 @@
+{
+  "email_id": "EMAIL-2026-0412-005",
+  "subject": "[myF] 신용카드 경비 - Claude Pro 구독 22,000원",
+  "samsung_doc_no": "2600412005",
+  "submitted_at": "2026-04-12T09:30:00",
+  "submitter": {
+    "employee_id": "20180987",
+    "knox_id": "leepark",
+    "name": "이박준",
+    "department": "마케팅팀",
+    "department_code": "MKT001",
+    "email": "leepark@samsung.com"
+  },
+  "approver": {
+    "name": "김상무",
+    "department": "마케팅팀",
+    "department_code": "MKT001"
+  },
+  "payment": {
+    "approval_no": "99887766",
+    "card_no_masked": "5678-****-****-1234",
+    "merchant_name": "ANTHROPIC *CLAUDE",
+    "biz_no": "000-00-00001",
+    "payment_date": "2026-04-11",
+    "posting_date": "2026-04-12",
+    "document_date": "2026-04-11",
+    "total_amount": 22000,
+    "vat_amount": 2000,
+    "supply_amount": 20000
+  },
+  "accounting": {
+    "account_code": "지급수수료",
+    "account_name": "지급수수료-기타",
+    "origin_cost_center": "MKT001",
+    "assigned_cost_center": "MKT001",
+    "tax_code": "V1",
+    "nontax_reason": "기타",
+    "withholding_tax_code": null,
+    "industry_code": "IT서비스"
+  },
+  "memo": "Claude Pro 월 구독료 (업무용 AI 도구)",
+  "gift_info": { "is_gift": false, "unit_price": null, "recipients": [] },
+  "attachments": [
+    { "filename": "claude_invoice.pdf", "type": "receipt_image", "withholding_tax_list_included": false }
+  ],
+  "opinion": { "submitter_comment": "업무용 AI 작성 도구 구독", "approver_comment": "" }
+}

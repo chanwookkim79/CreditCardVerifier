@@ -63,7 +63,9 @@ def print_result(result: CheckResult, use_color: bool = True) -> None:
 def process_single(email_path: str, receipt_path: str,
                    master: MasterDataLoader,
                    use_ocr: bool = False,
-                   output_json: bool = False) -> CheckResult:
+                   output_json: bool = False,
+                   receipt_index: int | None = None,
+                   ocr_items: list[dict] | None = None) -> CheckResult:
 
     t0 = time.perf_counter()
     email_name = Path(email_path).name
@@ -113,14 +115,20 @@ def process_single(email_path: str, receipt_path: str,
             log.info(f"[RECEIPT] Mock JSON 영수증 로드: {receipt_name}")
             receipt = rec_parser.from_json_file(receipt_path)
         elif use_ocr:
-            log.info(f"[OCR] 영수증 이미지 OCR 처리 시작: {receipt_name}")
-            from core.ocr_engine import OCREngine
-            ocr = OCREngine()
-            t_ocr = time.perf_counter()
-            items = ocr.run(receipt_path)
-            log.info(f"[OCR] OCR 완료: {len(items)}개 텍스트 추출 ({time.perf_counter()-t_ocr:.1f}초)")
-            log.debug(f"[OCR] 추출 텍스트 목록: {[i['text'] for i in items]}")
-            receipt = rec_parser.parse(items, source_file=receipt_path)
+            # 다중 영수증: multi_receipt_ocr에서 이미 분할·OCR된 items를 받음
+            # (ocr_items가 직접 전달된 경우)
+            if ocr_items is not None:
+                log.info(f"[OCR] 사전 분할된 items {len(ocr_items)}개 사용")
+                receipt = rec_parser.parse(ocr_items, source_file=receipt_path)
+            else:
+                log.info(f"[OCR] 단일 영수증 OCR 처리: {receipt_name}")
+                from core.ocr_engine import OCREngine
+                ocr = OCREngine()
+                t_ocr = time.perf_counter()
+                items = ocr.run(receipt_path)
+                log.info(f"[OCR] OCR 완료: {len(items)}개 텍스트 추출 ({time.perf_counter()-t_ocr:.1f}초)")
+                log.debug(f"[OCR] 추출 텍스트 목록: {[i['text'] for i in items]}")
+                receipt = rec_parser.parse(items, source_file=receipt_path)
         else:
             log.warning(f"[RECEIPT] OCR 미사용 모드 - 이미지 파일 건너뜀 (--use-ocr 추가 시 OCR 실행): {receipt_name}")
     else:
@@ -134,7 +142,8 @@ def process_single(email_path: str, receipt_path: str,
             log.info(f"          전체 사업자  : {receipt.all_biz_nos} (대행사 필터 후: {receipt.biz_no})")
         log.info(f"          승인번호     : {receipt.approval_no or '(미확인)'}")
         log.info(f"          거래일시     : {receipt.date or '(미확인)'} {receipt.transaction_time or ''}")
-        log.info(f"          합계/부가세  : {receipt.total:,}원 / {receipt.vat:,}원" if receipt.total else "          금액: (미확인)")
+        vat_str = f"{receipt.vat:,}원" if receipt.vat is not None else "(미확인)"
+        log.info(f"          합계/부가세  : {receipt.total:,}원 / {vat_str}" if receipt.total else "          금액: (미확인)")
         log.info(f"          불공제 키워드: {receipt.nontax_keywords or '없음'}")
         log.info(f"          업체 유형    : "
                  f"메가마트={receipt.is_megamart} | "
@@ -198,7 +207,7 @@ def process_single(email_path: str, receipt_path: str,
         print_result(result)
 
         # ── TXT 리포트 저장 ───────────────────────────────────────────
-        txt_path = write_txt_report(email, receipt, result)
+        txt_path = write_txt_report(email, receipt, result, receipt_index)
         log.info(f"[REPORT] TXT 리포트 저장: {txt_path.name}")
 
         # ── results CSV 기록 ──────────────────────────────────────────
@@ -210,6 +219,64 @@ def process_single(email_path: str, receipt_path: str,
     log.info(f"[END]   처리 완료: {email.email_id}")
     log.info("=" * 60)
     return result
+
+
+def process_email(email_path: str, receipt_paths: list[str],
+                  master: MasterDataLoader,
+                  use_ocr: bool = False,
+                  output_json: bool = False) -> list[CheckResult]:
+    """이메일 1건 + 영수증 N건 처리.
+
+    이미지 파일(--use-ocr)인 경우 MultiReceiptOCR로 자동 분할해
+    영수증 1장씩 process_single에 전달.
+    영수증이 2건 이상이면 TXT 파일명에 _01, _02 ... 접미사를 붙인다.
+    """
+    results = []
+
+    for rpath in receipt_paths:
+        is_image = rpath and not rpath.endswith(".json") and Path(rpath).exists()
+
+        if use_ocr and is_image:
+            # ── 다중 영수증 자동 분할 OCR ──
+            log.info(f"[MULTI-OCR] 다중 영수증 분할 시작: {Path(rpath).name}")
+            from core.ocr_engine import OCREngine
+            from core.multi_receipt_ocr import MultiReceiptOCR
+            ocr_engine = OCREngine()
+            multi_ocr  = MultiReceiptOCR(ocr_engine)
+
+            t_split = time.perf_counter()
+            all_items = multi_ocr.run(rpath)   # list[list[dict]]
+            log.info(
+                f"[MULTI-OCR] 분할 완료: {len(all_items)}장 "
+                f"({time.perf_counter()-t_split:.1f}초)"
+            )
+
+            use_index = len(all_items) > 1
+            for i, items in enumerate(all_items, start=1):
+                idx = i if use_index else None
+                log.info(f"[MULTI-OCR] 영수증 [{i}/{len(all_items)}] 처리 중 ({len(items)}개 텍스트)")
+                res = process_single(
+                    email_path, rpath, master,
+                    use_ocr=True,
+                    output_json=output_json,
+                    receipt_index=idx,
+                    ocr_items=items,
+                )
+                if res is not None:
+                    results.append(res)
+        else:
+            # ── 단일 처리 (JSON mock 또는 단일 이미지) ──
+            res = process_single(
+                email_path, rpath, master,
+                use_ocr=use_ocr,
+                output_json=output_json,
+                receipt_index=None,
+                ocr_items=None,
+            )
+            if res is not None:
+                results.append(res)
+
+    return results
 
 
 def main():
@@ -233,7 +300,8 @@ def main():
         """
     )
     parser.add_argument("--email", help="이메일 JSON 파일 경로")
-    parser.add_argument("--receipt", help="영수증 파일 경로 (.json=mock, .jpg/.png=OCR)")
+    parser.add_argument("--receipt", nargs="+", metavar="PATH",
+                        help="영수증 파일 경로 (.json=mock, .jpg/.png=OCR). 복수 지정 가능")
     parser.add_argument("--use-ocr", action="store_true", help="이미지 파일 OCR 처리 활성화")
     parser.add_argument("--all-emails", action="store_true", help="test_data/emails/ 전체 처리")
     parser.add_argument("--mock-receipts", action="store_true", help="test_data/receipts/ mock JSON 자동 매칭")
@@ -256,10 +324,9 @@ def main():
         log.info(f"일괄 처리: 총 {len(pairs)}건")
         all_results = []
         for e_path, r_path in pairs:
-            res = process_single(e_path, r_path, master,
-                                 use_ocr=args.use_ocr,
-                                 output_json=args.json)
-            if res is not None:
+            for res in process_email(e_path, [r_path], master,
+                                     use_ocr=args.use_ocr,
+                                     output_json=args.json):
                 all_results.append(res)
 
         total_fail = sum(r.summary()["FAIL"] for r in all_results)
@@ -273,9 +340,10 @@ def main():
                  f"OK={total_ok} WARN={total_warn} FAIL={total_fail}")
 
     elif args.email:
-        process_single(args.email, args.receipt or "", master,
-                       use_ocr=args.use_ocr,
-                       output_json=args.json)
+        receipt_paths = args.receipt or [""]
+        process_email(args.email, receipt_paths, master,
+                      use_ocr=args.use_ocr,
+                      output_json=args.json)
     else:
         parser.print_help()
         sys.exit(1)

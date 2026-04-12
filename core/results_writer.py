@@ -61,15 +61,19 @@ def _summary_content(result: CheckResult) -> str:
 
 def write_txt_report(email: EmailData,
                      receipt: ReceiptData | None,
-                     result: CheckResult) -> Path:
+                     result: CheckResult,
+                     receipt_index: int | None = None) -> Path:
     """점검 결과를 TXT 파일로 저장하고 파일 경로를 반환.
 
-    저장 위치: logs/reports/{email_id}.txt
+    저장 위치: logs/reports/{YYYYMMDD}_{knox_id}_{samsung_doc_no}.txt
+              영수증 복수 건: logs/reports/{YYYYMMDD}_{knox_id}_{samsung_doc_no}_01.txt
+    receipt_index: None=단일 건(접미사 없음), 1이상=복수 건 순번
     내용: 기본 정보 + 오류(FAIL) + 보완필요(WARN)
     """
     REPORTS_DIR.mkdir(parents=True, exist_ok=True)
     date_str = email.submitted_at[:10].replace("-", "")  # YYYYMMDD (이메일 수신일)
-    txt_path = REPORTS_DIR / f"{date_str}_{email.submitter.knox_id}_{email.samsung_doc_no}.txt"
+    suffix = f"_{receipt_index:02d}" if receipt_index is not None else ""
+    txt_path = REPORTS_DIR / f"{date_str}_{email.submitter.knox_id}_{email.samsung_doc_no}{suffix}.txt"
 
     now = datetime.now().strftime("%Y-%m-%d %H:%M")
     summary = result.summary()

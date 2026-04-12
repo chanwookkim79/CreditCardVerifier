@@ -1,0 +1,20 @@
+{
+  "source_file": "receipt_mock_ai_ok.json",
+  "merchant": "ANTHROPIC *CLAUDE",
+  "biz_no": "000-00-00001",
+  "all_biz_nos": ["000-00-00001"],
+  "approval_no": "99887766",
+  "date": "2026-04-11",
+  "transaction_time": "09:00",
+  "total": 22000,
+  "vat": 2000,
+  "supply": 20000,
+  "card_no": "5678-****-****-1234",
+  "nontax_keywords": ["Claude", "AI구독"],
+  "is_megamart": false,
+  "is_openmarket": false,
+  "is_gift_shop": false,
+  "is_taxi": false,
+  "is_holiday": false,
+  "raw_text": "ANTHROPIC *CLAUDE\nClaude Pro 구독\nAI구독 서비스\n합계: 22,000원\n부가세: 2,000원"
+}

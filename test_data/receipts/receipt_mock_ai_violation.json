@@ -1,0 +1,20 @@
+{
+  "source_file": "receipt_mock_ai_violation.json",
+  "merchant": "OPENAI *CHATGPT",
+  "biz_no": "000-00-00000",
+  "all_biz_nos": ["000-00-00000"],
+  "approval_no": "55667788",
+  "date": "2026-04-11",
+  "transaction_time": "10:15",
+  "total": 27500,
+  "vat": 2500,
+  "supply": 25000,
+  "card_no": "1234-****-****-5678",
+  "nontax_keywords": ["ChatGPT", "AI구독"],
+  "is_megamart": false,
+  "is_openmarket": false,
+  "is_gift_shop": false,
+  "is_taxi": false,
+  "is_holiday": false,
+  "raw_text": "OPENAI *CHATGPT\nChatGPT Plus 구독\nAI구독 서비스\n합계: 27,500원\n부가세: 2,500원"
+}

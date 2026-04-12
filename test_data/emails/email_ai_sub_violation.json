@@ -1,0 +1,47 @@
+{
+  "email_id": "EMAIL-2026-0412-004",
+  "subject": "[myF] 신용카드 경비 - ChatGPT Plus 구독 27,500원",
+  "samsung_doc_no": "2600412004",
+  "submitted_at": "2026-04-12T09:00:00",
+  "submitter": {
+    "employee_id": "20191234",
+    "knox_id": "cwkim",
+    "name": "김철우",
+    "department": "DEV팀",
+    "department_code": "DEV001",
+    "email": "cwkim@samsung.com"
+  },
+  "approver": {
+    "name": "이부장",
+    "department": "DEV팀",
+    "department_code": "DEV001"
+  },
+  "payment": {
+    "approval_no": "55667788",
+    "card_no_masked": "1234-****-****-5678",
+    "merchant_name": "OPENAI *CHATGPT",
+    "biz_no": "000-00-00000",
+    "payment_date": "2026-04-11",
+    "posting_date": "2026-04-12",
+    "document_date": "2026-04-11",
+    "total_amount": 27500,
+    "vat_amount": 2500,
+    "supply_amount": 25000
+  },
+  "accounting": {
+    "account_code": "복리후생비",
+    "account_name": "복리후생비-기타-기타",
+    "origin_cost_center": "DEV001",
+    "assigned_cost_center": "DEV001",
+    "tax_code": "V1",
+    "nontax_reason": "해당사항없음",
+    "withholding_tax_code": null,
+    "industry_code": "IT서비스"
+  },
+  "memo": "ChatGPT Plus 월 구독료",
+  "gift_info": { "is_gift": false, "unit_price": null, "recipients": [] },
+  "attachments": [
+    { "filename": "chatgpt_invoice.pdf", "type": "receipt_image", "withholding_tax_list_included": false }
+  ],
+  "opinion": { "submitter_comment": "", "approver_comment": "" }
+}

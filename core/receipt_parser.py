@@ -55,13 +55,32 @@ class ReceiptParser:
             return None
 
         # 가맹점명
+        # 1차: 한글 포함 텍스트 우선 (깨진 ASCII 영문자 스킵)
+        # 2차: 한글 없으면 영문 가맹점명 허용 (fallback)
+        _MERCHANT_SKIP = re.compile(
+            r'사업자|대표|전화|TEL|입장권|영수증|무인발권|승인|카드번호|결제방법', re.I
+        )
         merchant = None
-        for item in items[:10]:
+        # 1차 시도: 한글 포함 항목 (상위 20개)
+        for item in items[:20]:
             t = item["text"].strip()
-            if len(t) >= 2 and not re.match(r'^[\d\-\s\(\)]+$', t):
-                if not re.search(r'사업자|대표|전화|TEL|tel', t, re.I):
-                    merchant = t
-                    break
+            if len(t) < 2:
+                continue
+            if re.match(r'^[\d\-\s\(\)\.\/]+$', t) or t.startswith('('):
+                continue
+            if _MERCHANT_SKIP.search(t):
+                continue
+            if re.search(r'[\uAC00-\uD7A3]', t):  # 한글 포함
+                merchant = t
+                break
+        # 2차 fallback: 한글 없으면 상위 10개에서 순서대로 선택
+        if merchant is None:
+            for item in items[:10]:
+                t = item["text"].strip()
+                if len(t) >= 2 and not re.match(r'^[\d\-\s\(\)\.\/]+$', t):
+                    if not _MERCHANT_SKIP.search(t) and not t.startswith('('):
+                        merchant = t
+                        break
 
         # 모든 사업자번호 추출
         all_biz_nos = re.findall(r'\d{3}-\d{2}-\d{5}', full)
@@ -106,8 +125,11 @@ class ReceiptParser:
         total = int(total_str.replace(",", "")) if total_str else None
 
         # 부가세
+        # - '부가세액 7,363' 형식 (원 없이 숫자만) 먼저 시도
+        # - '부가세 4,527원' 형식은 원 필수로 '부가세:\n7일까지' 오추출 방지
         vat_str = find([
-            r'부가세\s*[:：]?\s*([\d,]+)\s*원?',
+            r'부가세액\s*[:：]?\s*([\d,]+)',        # "부가세액  7,363"
+            r'부가세\s*[:：]?\s*([\d,]+)\s*원',     # "부가세 4,527원" (원 필수)
             r'세\s*액\s*[:：]?\s*([\d,]+)\s*원?',
             r'VAT\s*[:：]?\s*([\d,]+)\s*원?',
         ])
