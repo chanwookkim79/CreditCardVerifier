@@ -602,6 +602,7 @@ Violation
 
 CheckResult
 ├── email_id: str
+├── subject: str                 # 원본 이메일 제목 ([myF] 신용카드 경비...)
 ├── submitter_email: str
 ├── submitter_name: str
 └── violations: list[Violation]
@@ -726,43 +727,14 @@ def get_logger(name: str = "checker") -> logging.Logger
 
 ```python
 RESULTS_FILE = logs/checker results.csv
+REPORTS_DIR  = logs/reports/
 RULE_COLUMNS = [("R01", "R01_부가세금액"), ..., ("R15", "R15_결재권자")]
 
 def _rule_status(result: CheckResult, rule_no: int) -> str
     # FAIL > WARN > OK 우선순위로 최악 상태 반환, 없으면 ""
 
-def _notify_content(result: CheckResult) -> str
-    # FAIL/WARN 항목을 "[R01]메시지 / [R03]메시지" 형식으로 요약
-
-def write_result(timestamp, email, receipt, result, notified) -> None
-    # 파일 없으면 헤더 먼저 작성, 이후 1행 append
-```
-
-### 8.10 `master/master_data_loader.py`
-
-```python
-class MasterDataLoader:
-
-    def __init__(agency_csv: Path, withholding_csv: Path)
-        # _agency_biz_nos: set[str]  (정규화된 사업자번호)
-        # _employees: list[dict]
-
-    def is_agency_biz_no(biz_no: str) -> bool
-        # "-" 제거 후 집합 조회
-
-    def get_employee(employee_id=None, knox_id=None) -> Optional[dict]
-
-    def get_expected_withholding_code(employee_id=None, knox_id=None) -> Optional[str]
-        # 직급 → 원천세 코드 변환 (RANK_TO_WITHHOLDING_CODE 참조)
-
-    def filter_actual_biz_nos(all_biz_nos: list[str]) -> list[str]
-        # 대행사 BN 제거 후 실거래 BN 목록 반환
-```
-
-### 8.11 `core/results_writer.py` — TXT 리포트
-
-```python
-REPORTS_DIR = logs/reports/
+def _summary_content(result: CheckResult) -> str
+    # FAIL/WARN 항목을 "[R01]메시지 / [R03]메시지" 형식으로 요약 (CSV용)
 
 def write_txt_report(email: EmailData,
                      receipt: ReceiptData | None,
@@ -772,6 +744,10 @@ def write_txt_report(email: EmailData,
     # 내용: 기본 정보 헤더 + [오류 항목] FAIL + [보완 필요] WARN
     # 이상 없으면 "모든 점검 항목 통과" 메시지
     # 반환값: 저장된 파일 경로(Path)
+
+def write_result(timestamp, email, receipt, result, txt_saved: bool) -> None
+    # 파일 없으면 헤더 먼저 작성, 이후 1행 append
+    # txt_saved=True → TXT저장 컬럼에 "Y"
 ```
 
 **TXT 파일 구조**
@@ -802,7 +778,28 @@ def write_txt_report(email: EmailData,
 ============================================================
 ```
 
-### 8.12 `main.py`
+### 8.10 `master/master_data_loader.py`
+
+```python
+class MasterDataLoader:
+
+    def __init__(agency_csv: Path, withholding_csv: Path)
+        # _agency_biz_nos: set[str]  (정규화된 사업자번호)
+        # _employees: list[dict]
+
+    def is_agency_biz_no(biz_no: str) -> bool
+        # "-" 제거 후 집합 조회
+
+    def get_employee(employee_id=None, knox_id=None) -> Optional[dict]
+
+    def get_expected_withholding_code(employee_id=None, knox_id=None) -> Optional[str]
+        # 직급 → 원천세 코드 변환 (RANK_TO_WITHHOLDING_CODE 참조)
+
+    def filter_actual_biz_nos(all_biz_nos: list[str]) -> list[str]
+        # 대행사 BN 제거 후 실거래 BN 목록 반환
+```
+
+### 8.11 `main.py`
 
 ```python
 def print_result(result: CheckResult, use_color: bool = True) -> None
