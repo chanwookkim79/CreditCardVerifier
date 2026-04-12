@@ -26,6 +26,7 @@ class Violation:
 @dataclass
 class CheckResult:
     email_id: str
+    subject: str
     submitter_email: str
     submitter_name: str
     violations: list = field(default_factory=list)

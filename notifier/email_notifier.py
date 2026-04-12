@@ -36,7 +36,7 @@ class EmailNotifier:
             f"안녕하세요, {result.submitter_name}님.",
             "",
             f"신용카드 결제 점검 결과 아래와 같이 위반/주의 사항이 확인되었습니다.",
-            f"이메일 ID: {result.email_id}  |  점검일시: {now}",
+            f"원본 이메일: {result.subject}  |  점검일시: {now}",
             "",
             "─" * 60,
         ]

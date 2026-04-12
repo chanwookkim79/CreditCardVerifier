@@ -167,6 +167,7 @@ def process_single(email_path: str, receipt_path: str,
     # ── 4. 결과 집계 ─────────────────────────────────────────────────
     result = CheckResult(
         email_id=email.email_id,
+        subject=email.subject,
         submitter_email=email.submitter.email,
         submitter_name=email.submitter.name,
         violations=violations,
