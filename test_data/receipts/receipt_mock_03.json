@@ -1,0 +1,20 @@
+{
+  "source_file": "receipt_mock_03",
+  "merchant": "신세계백화점",
+  "biz_no": "135-81-12345",
+  "all_biz_nos": ["135-81-12345"],
+  "approval_no": "11223344",
+  "date": "2026-03-30",
+  "transaction_time": "14:20",
+  "total": 300000,
+  "vat": 0,
+  "supply": 300000,
+  "card_no": "9999-****-****-0001",
+  "nontax_keywords": ["상품권"],
+  "is_megamart": false,
+  "is_openmarket": false,
+  "is_gift_shop": true,
+  "is_taxi": false,
+  "is_holiday": false,
+  "raw_text": "신세계백화점\n사업자번호: 135-81-12345\n상품권\n합계: 300,000원\n부가세: 0원\n승인번호: 11223344\n거래일시: 2026-03-30 14:20"
+}

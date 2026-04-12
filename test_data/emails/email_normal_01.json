@@ -1,0 +1,47 @@
+{
+  "email_id": "EMAIL-2026-0412-001",
+  "subject": "[myF] 신용카드 경비 - 강남 한식당 55,000원",
+  "samsung_doc_no": "2600412001",
+  "submitted_at": "2026-04-12T10:30:00",
+  "submitter": {
+    "employee_id": "20191234",
+    "knox_id": "cwkim",
+    "name": "김철우",
+    "department": "DEV팀",
+    "department_code": "DEV001",
+    "email": "cwkim@samsung.com"
+  },
+  "approver": {
+    "name": "이부장",
+    "department": "DEV팀",
+    "department_code": "DEV001"
+  },
+  "payment": {
+    "approval_no": "12345678",
+    "card_no_masked": "1234-****-****-5678",
+    "merchant_name": "강남 한식당",
+    "biz_no": "123-45-67890",
+    "payment_date": "2026-04-10",
+    "posting_date": "2026-04-12",
+    "document_date": "2026-04-10",
+    "total_amount": 55000,
+    "vat_amount": 5000,
+    "supply_amount": 50000
+  },
+  "accounting": {
+    "account_code": "복리후생비",
+    "account_name": "복리후생비-기타-기타",
+    "origin_cost_center": "DEV001",
+    "assigned_cost_center": "DEV001",
+    "tax_code": "V1",
+    "nontax_reason": "해당사항없음",
+    "withholding_tax_code": null,
+    "industry_code": "식음료"
+  },
+  "memo": "팀 점심 식사",
+  "gift_info": { "is_gift": false, "unit_price": null, "recipients": [] },
+  "attachments": [
+    { "filename": "영수증1.jpg", "type": "receipt_image", "withholding_tax_list_included": false }
+  ],
+  "opinion": { "submitter_comment": "", "approver_comment": "" }
+}

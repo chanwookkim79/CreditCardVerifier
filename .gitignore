@@ -1,4 +1,4 @@
-# 오프라인 패키지 백업 (241MB, git 제외)
+# 오프라인 패키지 백업 (용량 큼)
 pkg files/
 
 # Python 캐시
@@ -6,13 +6,25 @@ __pycache__/
 *.pyc
 *.pyo
 
-# 임시 출력 파일
-*.txt
-!README.md
+# 로그 파일 (런타임 생성, 개인정보 포함 가능)
+logs/*.csv
 
-# IDE
+# 영수증 이미지 (개인정보)
+*.jpg
+*.jpeg
+*.png
+*.pdf
+
+# IDE / 에디터
 .vscode/
 .idea/
 
-# Claude 내부 파일
+# Claude Code 내부 설정
 .claude/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# 기타
+*.bak

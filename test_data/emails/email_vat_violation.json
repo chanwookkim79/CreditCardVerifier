@@ -1,0 +1,47 @@
+{
+  "email_id": "EMAIL-2026-0412-002",
+  "subject": "[myF] 신용카드 경비 - 스크린골프존 강남점 110,000원",
+  "samsung_doc_no": "2600412002",
+  "submitted_at": "2026-04-12T11:00:00",
+  "submitter": {
+    "employee_id": "20180987",
+    "knox_id": "leepark",
+    "name": "이박준",
+    "department": "마케팅팀",
+    "department_code": "MKT001",
+    "email": "leepark@samsung.com"
+  },
+  "approver": {
+    "name": "김상무",
+    "department": "마케팅팀",
+    "department_code": "MKT001"
+  },
+  "payment": {
+    "approval_no": "87654321",
+    "card_no_masked": "5678-****-****-1234",
+    "merchant_name": "스크린골프존 강남점",
+    "biz_no": "987-65-43210",
+    "payment_date": "2026-04-11",
+    "posting_date": "2026-04-12",
+    "document_date": "2026-04-11",
+    "total_amount": 110000,
+    "vat_amount": 10000,
+    "supply_amount": 100000
+  },
+  "accounting": {
+    "account_code": "복리후생비",
+    "account_name": "복리후생비-기타-기타",
+    "origin_cost_center": "MKT001",
+    "assigned_cost_center": "MKT001",
+    "tax_code": "V1",
+    "nontax_reason": "해당사항없음",
+    "withholding_tax_code": null,
+    "industry_code": "스포츠레저"
+  },
+  "memo": "팀 회식",
+  "gift_info": { "is_gift": false, "unit_price": null, "recipients": [] },
+  "attachments": [
+    { "filename": "골프영수증.jpg", "type": "receipt_image", "withholding_tax_list_included": false }
+  ],
+  "opinion": { "submitter_comment": "", "approver_comment": "" }
+}

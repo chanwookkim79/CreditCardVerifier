@@ -1,0 +1,20 @@
+{
+  "source_file": "receipt_mock_02",
+  "merchant": "스크린골프존 강남점",
+  "biz_no": "987-65-43210",
+  "all_biz_nos": ["123-45-00002", "987-65-43210"],
+  "approval_no": "87654321",
+  "date": "2026-04-11",
+  "transaction_time": "18:45",
+  "total": 110000,
+  "vat": 8000,
+  "supply": 102000,
+  "card_no": "5678-****-****-1234",
+  "nontax_keywords": ["스크린골프"],
+  "is_megamart": false,
+  "is_openmarket": false,
+  "is_gift_shop": false,
+  "is_taxi": false,
+  "is_holiday": false,
+  "raw_text": "스크린골프존 강남점\n사업자번호: 987-65-43210\nKB국민카드대행: 123-45-00002\n합계: 110,000원\n부가세: 8,000원\n공급가액: 102,000원\n승인번호: 87654321\n거래일시: 2026-04-11 18:45"
+}

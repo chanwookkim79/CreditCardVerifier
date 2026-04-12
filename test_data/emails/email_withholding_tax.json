@@ -1,0 +1,53 @@
+{
+  "email_id": "EMAIL-2026-0412-003",
+  "subject": "[myF] 신용카드 경비 - 신세계백화점 300,000원",
+  "samsung_doc_no": "2600412003",
+  "submitted_at": "2026-04-12T14:00:00",
+  "submitter": {
+    "employee_id": "20191234",
+    "knox_id": "cwkim",
+    "name": "김철우",
+    "department": "DEV팀",
+    "department_code": "DEV001",
+    "email": "cwkim@samsung.com"
+  },
+  "approver": {
+    "name": "이부장",
+    "department": "DEV팀",
+    "department_code": "DEV001"
+  },
+  "payment": {
+    "approval_no": "11223344",
+    "card_no_masked": "9999-****-****-0001",
+    "merchant_name": "신세계백화점",
+    "biz_no": "135-81-12345",
+    "payment_date": "2026-03-30",
+    "posting_date": "2026-04-02",
+    "document_date": "2026-03-30",
+    "total_amount": 300000,
+    "vat_amount": 0,
+    "supply_amount": 300000
+  },
+  "accounting": {
+    "account_code": "판매촉진비",
+    "account_name": "판매촉진비-기타-기타",
+    "origin_cost_center": "DEV001",
+    "assigned_cost_center": "DEV001",
+    "tax_code": "X1",
+    "nontax_reason": "선물구입",
+    "withholding_tax_code": null,
+    "industry_code": "상품권"
+  },
+  "memo": "거래선 선물 구입 (품목당 150,000원)",
+  "gift_info": {
+    "is_gift": true,
+    "unit_price": 150000,
+    "recipients": [
+      { "employee_id": "20180987", "name": "이박준", "rank": "CL1" }
+    ]
+  },
+  "attachments": [
+    { "filename": "백화점영수증.jpg", "type": "receipt_image", "withholding_tax_list_included": false }
+  ],
+  "opinion": { "submitter_comment": "거래선 선물", "approver_comment": "" }
+}

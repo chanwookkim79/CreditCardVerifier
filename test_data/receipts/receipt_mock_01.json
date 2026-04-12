@@ -1,0 +1,20 @@
+{
+  "source_file": "receipt_mock_01",
+  "merchant": "강남 한식당",
+  "biz_no": "123-45-67890",
+  "all_biz_nos": ["123-45-67890"],
+  "approval_no": "12345678",
+  "date": "2026-04-10",
+  "transaction_time": "12:30",
+  "total": 55000,
+  "vat": 5000,
+  "supply": 50000,
+  "card_no": "1234-****-****-5678",
+  "nontax_keywords": [],
+  "is_megamart": false,
+  "is_openmarket": false,
+  "is_gift_shop": false,
+  "is_taxi": false,
+  "is_holiday": false,
+  "raw_text": "강남 한식당\n사업자번호: 123-45-67890\n합계: 55,000원\n부가세: 5,000원\n공급가액: 50,000원\n승인번호: 12345678\n거래일시: 2026-04-10 12:30"
+}

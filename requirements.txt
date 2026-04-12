@@ -1,0 +1,9 @@
+# 신용카드 영수증 점검 시스템 의존성
+# Python 3.10+
+
+# OCR 엔진 (한글 영수증 이미지 분석)
+paddleocr>=3.4.0
+paddlex>=3.4.0
+
+# 위 패키지 설치 시 아래 의존성은 자동 설치됨:
+#   numpy, pillow, opencv-python, shapely, pyclipper 등
