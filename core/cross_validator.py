@@ -29,9 +29,10 @@ class CrossValidator:
     def __init__(self, master_loader=None):
         self.master = master_loader
 
-    def validate(self, email: EmailData, receipt: Optional[ReceiptData]) -> list[Violation]:
+    def validate(self, email: EmailData, receipt: Optional[ReceiptData],
+                 receipt_count: int = 1) -> list[Violation]:
         result = []
-        result += self._check_vat(email, receipt)
+        result += self._check_vat(email, receipt, receipt_count)
         result += self._check_biz_no(email, receipt)
         result += self._check_nontax(email, receipt)
         result += self._check_dept_code(email)
@@ -47,10 +48,18 @@ class CrossValidator:
     # ─────────────────────────────────────────────────────────────────────
     # R1: 부가세 금액 일치 여부
     # ─────────────────────────────────────────────────────────────────────
-    def _check_vat(self, email: EmailData, receipt: Optional[ReceiptData]) -> list[Violation]:
+    def _check_vat(self, email: EmailData, receipt: Optional[ReceiptData],
+                   receipt_count: int = 1) -> list[Violation]:
         if receipt is None:
             return [_v(1, "부가세", "부가세 금액 확인", "WARN",
                        "영수증 없음 - 부가세 금액 수동 확인 필요")]
+        # 영수증 다건: 이메일 금액은 합산이므로 개별 금액 비교 불가 → 수동 확인
+        if receipt_count > 1:
+            vat_str = f"{receipt.vat:,}원" if receipt.vat is not None else "미추출"
+            return [_v(1, "부가세", "부가세 금액 확인", "WARN",
+                       f"영수증 {receipt_count}건 합산 전표 — 건별 부가세({vat_str}) 수동 확인 필요 "
+                       f"(이메일 합산 부가세: {email.payment.vat_amount:,}원)",
+                       receipt_field="vat")]
         if receipt.vat is None:
             return [_v(1, "부가세", "부가세 금액 확인", "WARN",
                        "영수증에서 부가세 금액을 추출하지 못함 - 수동 확인 필요",

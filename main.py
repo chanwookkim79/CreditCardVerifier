@@ -65,7 +65,8 @@ def process_single(email_path: str, receipt_path: str,
                    use_ocr: bool = False,
                    output_json: bool = False,
                    receipt_index: int | None = None,
-                   ocr_items: list[dict] | None = None) -> CheckResult:
+                   ocr_items: list[dict] | None = None,
+                   receipt_count: int = 1) -> CheckResult:
 
     t0 = time.perf_counter()
     email_name = Path(email_path).name
@@ -155,9 +156,10 @@ def process_single(email_path: str, receipt_path: str,
         log.warning("[RECEIPT] 영수증 데이터 없음 - 일부 규칙 WARN 처리됩니다")
 
     # ── 3. 교차 검증 ─────────────────────────────────────────────────
-    log.info(f"[CHECK] 점검규칙 적용 시작 ({'이메일+영수증 교차검증' if receipt else '이메일 단독 점검'})")
+    log.info(f"[CHECK] 점검규칙 적용 시작 ({'이메일+영수증 교차검증' if receipt else '이메일 단독 점검'})"
+             + (f" (전표 내 영수증 {receipt_count}건 — R01 금액비교 SKIP)" if receipt_count > 1 else ""))
     validator = CrossValidator(master)
-    violations = validator.validate(email, receipt)
+    violations = validator.validate(email, receipt, receipt_count=receipt_count)
 
     # 규칙별 상세 로그
     for v in sorted(violations, key=lambda x: x.rule_no):
@@ -251,16 +253,18 @@ def process_email(email_path: str, receipt_paths: list[str],
                 f"({time.perf_counter()-t_split:.1f}초)"
             )
 
-            use_index = len(all_items) > 1
+            total_count = len(all_items)
+            use_index = total_count > 1
             for i, items in enumerate(all_items, start=1):
                 idx = i if use_index else None
-                log.info(f"[MULTI-OCR] 영수증 [{i}/{len(all_items)}] 처리 중 ({len(items)}개 텍스트)")
+                log.info(f"[MULTI-OCR] 영수증 [{i}/{total_count}] 처리 중 ({len(items)}개 텍스트)")
                 res = process_single(
                     email_path, rpath, master,
                     use_ocr=True,
                     output_json=output_json,
                     receipt_index=idx,
                     ocr_items=items,
+                    receipt_count=total_count,
                 )
                 if res is not None:
                     results.append(res)
