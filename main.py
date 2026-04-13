@@ -309,16 +309,17 @@ def process_fetched_emails(
     Returns:
         list: 처리 결과 리스트
     """
-    from core.email_receiver import save_verified_slip
+    from core.email_receiver import save_verified_slip, POP3EmailReceiver
     
     all_results = []
+    
+    receiver = POP3EmailReceiver()
     
     for email_info in emails:
         # 첨부파일 경로 수집
         receipt_paths = [att['filepath'] for att in email_info.get('attachments', [])]
         
         # JSON으로 변환된 파일 경로도 추가
-        receiver = __import__('core.email_receiver', fromlist=['IMAPEmailReceiver']).IMAPEmailReceiver()
         json_path = receiver.email_to_json(email_info)
         
         # 처리
