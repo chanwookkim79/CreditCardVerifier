@@ -31,7 +31,7 @@ from core.email_parser import EmailParser
 from core.receipt_parser import ReceiptParser
 from core.cross_validator import CrossValidator
 from models.check_result import CheckResult, CheckStatus
-from core.results_writer import write_result, write_txt_report
+from core.results_writer import write_result, write_txt_report, is_already_processed
 
 STATUS_ICON = {
     "OK": "✅", "WARN": "⚠️ ", "FAIL": "❌", "INFO": "ℹ️ ", "SKIP": "⏭️ ",
@@ -86,6 +86,12 @@ def process_single(email_path: str, receipt_path: str,
     # ── 제목 필터 ────────────────────────────────────────────────────
     if EMAIL_SUBJECT_FILTER not in email.subject:
         log.info(f"[SKIP] 처리 대상 아님 (제목 필터 불일치): {email.subject}")
+        return None
+
+    # ── 중복 체크 ────────────────────────────────────────────────────
+    if is_already_processed(email.samsung_doc_no):
+        log.warning(f"[SKIP] 이미 처리된 전표번호: {email.samsung_doc_no} — 중복 실행 건너뜀")
+        print(f"⏭️  [SKIP] 전표번호 {email.samsung_doc_no} 는 이미 처리된 건입니다. 건너뜁니다.")
         return None
     log.info(f"        이메일 ID    : {email.email_id}")
     log.info(f"        삼성전표번호 : {email.samsung_doc_no or '(없음)'}")

@@ -37,6 +37,18 @@ HEADER = (
 )
 
 
+def is_already_processed(samsung_doc_no: str) -> bool:
+    """samsung_doc_no 기준으로 기처리 여부 확인"""
+    if not samsung_doc_no or not RESULTS_FILE.exists():
+        return False
+    with open(RESULTS_FILE, newline="", encoding="utf-8-sig") as f:
+        reader = csv.DictReader(f)
+        for row in reader:
+            if row.get("삼성전표번호") == samsung_doc_no:
+                return True
+    return False
+
+
 def _rule_status(result: CheckResult, rule_no: int) -> str:
     """해당 규칙 번호의 최악 상태 반환 (FAIL > WARN > OK > 빈칸)"""
     matched = [v for v in result.violations if v.rule_no == rule_no]
