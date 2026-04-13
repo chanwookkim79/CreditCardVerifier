@@ -7,3 +7,10 @@ paddlex>=3.4.0
 
 # 위 패키지 설치 시 아래 의존성은 자동 설치됨:
 #   numpy, pillow, opencv-python, shapely, pyclipper 등
+
+# 첨부파일 이미지 추출 (PDF/PPT/Excel/Word)
+python-pptx>=1.0.0
+openpyxl>=3.1.0
+python-docx>=1.2.0
+# pypdfium2 는 paddlex 의존성으로 자동 설치됨
+# DOC/PPT/XLS(구형) 변환은 LibreOffice 별도 설치 필요

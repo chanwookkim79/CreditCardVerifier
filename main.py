@@ -244,7 +244,28 @@ def process_email(email_path: str, receipt_paths: list[str],
     results = []
 
     for rpath in receipt_paths:
-        is_image = rpath and not rpath.endswith(".json") and Path(rpath).exists()
+        suffix = Path(rpath).suffix.lower() if rpath else ""
+        is_document = suffix in (".pdf", ".pptx", ".xlsx", ".docx", ".ppt", ".xls", ".doc")
+        is_image = rpath and not rpath.endswith(".json") and Path(rpath).exists() and not is_document
+
+        # ── 문서 파일: 이미지 추출 후 재귀 처리 ──────────────────────────
+        if use_ocr and is_document and Path(rpath).exists():
+            from core.attachment_extractor import extract_images, cleanup_extracted, NotSupportedError
+            log.info(f"[EXTRACT] 문서 파일 이미지 추출 시작: {Path(rpath).name}")
+            try:
+                extracted = extract_images(rpath)
+            except NotSupportedError as e:
+                log.error(f"[EXTRACT] 추출 실패: {e}")
+                continue
+            if not extracted:
+                log.warning(f"[EXTRACT] 추출된 이미지 없음: {Path(rpath).name}")
+                continue
+            log.info(f"[EXTRACT] {len(extracted)}개 이미지 추출 완료 → OCR 처리")
+            for res in process_email(email_path, [str(p) for p in extracted],
+                                     master, use_ocr=True, output_json=output_json):
+                results.append(res)
+            cleanup_extracted(extracted)
+            continue
 
         if use_ocr and is_image:
             # ── 다중 영수증 자동 분할 OCR ──
