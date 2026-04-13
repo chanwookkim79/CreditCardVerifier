@@ -4,6 +4,7 @@
   python main.py --email test_data/emails/email_normal_01.json --receipt test_data/receipts/receipt_mock_01.json
   python main.py --all-emails --mock-receipts
   python main.py --email test_data/emails/email_vat_violation.json --receipt test_data/receipts/receipt_mock_02.json --json
+  python main.py --fetch-imap --use-ocr  # 실제 메일 수신 후 OCR 처리
 """
 import os
 import sys
@@ -25,6 +26,7 @@ log = get_logger("checker")
 from config import (
     AGENCY_CSV, WITHHOLDING_CSV,
     BASE_DIR, TEST_DATA_DIR, EMAIL_SUBJECT_FILTER,
+    USE_MOCK_EMAIL,
 )
 from master.master_data_loader import MasterDataLoader
 from core.email_parser import EmailParser
@@ -289,6 +291,49 @@ def process_email(email_path: str, receipt_paths: list[str],
     return results
 
 
+def process_fetched_emails(
+    emails: list,
+    master: MasterDataLoader,
+    use_ocr: bool = False,
+    output_json: bool = False
+) -> list:
+    """
+    POP3로 수신한 이메일들을 처리합니다.
+    
+    Args:
+        emails: 수신한 이메일 리스트
+        master: 마스터 데이터 로더
+        use_ocr: OCR 사용 여부
+        output_json: JSON 출력 여부
+    
+    Returns:
+        list: 처리 결과 리스트
+    """
+    from core.email_receiver import save_verified_slip
+    
+    all_results = []
+    
+    for email_info in emails:
+        # 첨부파일 경로 수집
+        receipt_paths = [att['filepath'] for att in email_info.get('attachments', [])]
+        
+        # JSON으로 변환된 파일 경로도 추가
+        receiver = __import__('core.email_receiver', fromlist=['IMAPEmailReceiver']).IMAPEmailReceiver()
+        json_path = receiver.email_to_json(email_info)
+        
+        # 처리
+        for res in process_email(json_path, receipt_paths if use_ocr else [], master,
+                                 use_ocr=use_ocr,
+                                 output_json=output_json):
+            if res is not None:
+                all_results.append(res)
+                # 검증 완료 전표 저장
+                if email_info.get('samsung_doc_no'):
+                    save_verified_slip(email_info['samsung_doc_no'])
+    
+    return all_results
+
+
 def main():
     parser = argparse.ArgumentParser(
         description="신용카드 영수증 점검 시스템",
@@ -307,6 +352,9 @@ def main():
   # JSON 출력
   python main.py --email test_data/emails/email_vat_violation.json --receipt test_data/receipts/receipt_mock_02.json --json
 
+  # 실제 메일 수신 후 영수증 점검
+  python main.py --fetch-imap --use-ocr
+  python main.py --fetch-imap --max-emails 5 --unread-only
         """
     )
     parser.add_argument("--email", help="이메일 JSON 파일 경로")
@@ -316,6 +364,16 @@ def main():
     parser.add_argument("--all-emails", action="store_true", help="test_data/emails/ 전체 처리")
     parser.add_argument("--mock-receipts", action="store_true", help="test_data/receipts/ mock JSON 자동 매칭")
     parser.add_argument("--json", action="store_true", help="JSON 형식 출력")
+    parser.add_argument("--fetch-imap", action="store_true", 
+                        help="IMAP으로 실제 메일 수신 (신용카드 경비 메일)")
+    parser.add_argument("--max-emails", type=int, default=10,
+                        help="IMAP 수신 최대 메일 수 (기본: 10)")
+    parser.add_argument("--unread-only", action="store_true",
+                        help="읽지 않은 메일만 수신")
+    parser.add_argument("--subject-filter", default="[myF] 신용카드 경비",
+                        help="메일 제목 필터 (기본: '[myF] 신용카드 경비')")
+    parser.add_argument("--since-date", default="2026-04-10 19:00:00",
+                        help="메일 수신 시작 날짜 (형식: YYYY-MM-DD HH:MM:SS, 기본: 2026-04-10 19:00:00)")
     args = parser.parse_args()
 
     from core.logger import CSV_LOG_FILE
@@ -323,6 +381,56 @@ def main():
     log.debug(f"마스터 데이터 로드: {AGENCY_CSV.name}, {WITHHOLDING_CSV.name}")
     master = MasterDataLoader(AGENCY_CSV, WITHHOLDING_CSV)
     log.info(f"마스터 데이터 로드 완료")
+
+    # POP3 메일 수신 모드
+    if args.fetch_imap:
+        log.info(f"[POP3] 메일 수신 시작 (제목 필터: {args.subject_filter})")
+        from core.email_receiver import fetch_credit_card_emails
+        from datetime import datetime
+        
+        # since_date 파싱
+        try:
+            since_date = datetime.strptime(args.since_date, "%Y-%m-%d %H:%M:%S")
+            log.info(f"[POP3] 수신 시작 날짜: {since_date}")
+        except ValueError:
+            since_date = datetime(2026, 4, 10, 19, 0, 0)
+            log.warning(f"[POP3] 날짜 형식 오류, 기본값 사용: {since_date}")
+        
+        emails = fetch_credit_card_emails(
+            subject_filter=args.subject_filter,
+            max_emails=args.max_emails,
+            exclude_verified=True,
+            save_json=True,
+            since_date=since_date
+        )
+        
+        if not emails:
+            log.info("[POP3] 수신된 메일 없음")
+            print("수신된 메일이 없습니다.")
+            sys.exit(0)
+        
+        log.info(f"[POP3] {len(emails)}개 메일 수신 완료")
+        print(f"\n{'='*65}")
+        print(f"POP3로 {len(emails)}개 메일 수신 완료")
+        print(f"{'='*65}")
+        
+        # 수신한 메일 처리
+        all_results = process_fetched_emails(
+            emails, master,
+            use_ocr=args.use_ocr,
+            output_json=args.json
+        )
+        
+        total_fail = sum(r.summary()["FAIL"] for r in all_results)
+        total_warn = sum(r.summary()["WARN"] for r in all_results)
+        total_ok   = sum(r.summary()["OK"]   for r in all_results)
+        print(f"\n{'='*65}")
+        print(f"전체 {len(all_results)}건 처리 완료")
+        print(f"총 점검: ✅ {total_ok}건 정상  ⚠️  {total_warn}건 주의  ❌ {total_fail}건 실패")
+        print(f"{'='*65}")
+        log.info(f"[POP3] 처리 완료: {len(all_results)}건 | "
+                 f"OK={total_ok} WARN={total_warn} FAIL={total_fail}")
+        return
 
     if args.all_emails:
         email_files = sorted(glob(str(TEST_DATA_DIR / "emails" / "*.json")))

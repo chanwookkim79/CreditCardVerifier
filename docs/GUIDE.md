@@ -109,6 +109,7 @@ CreditCardVerifier/
 │   └── check_result.py         # CheckResult, Violation, CheckStatus
 │
 ├── core/                       # 핵심 처리 로직
+│   ├── email_receiver.py       # POP3 메일 수신
 │   ├── email_parser.py         # JSON → EmailData
 │   ├── receipt_parser.py       # OCR 텍스트 → ReceiptData
 │   ├── ocr_engine.py           # PaddleOCR 래퍼
@@ -435,6 +436,10 @@ python main.py [OPTIONS]
 
 | 옵션 | 타입 | 설명 |
 |------|------|------|
+| `--fetch-imap` | flag | POP3로 실제 메일 수신 |
+| `--max-emails` | int | 수신 최대 메일 수 (기본: 10) |
+| `--since-date` | str | 수신 시작 날짜 (형식: YYYY-MM-DD HH:MM:SS) |
+| `--subject-filter` | str | 메일 제목 필터 (기본: '[myF] 신용카드 경비') |
 | `--email <path>` | str | 단일 이메일 JSON 파일 경로 |
 | `--receipt <path> [<path> ...]` | str+ | 영수증 파일 경로 (복수 지정 가능, `.json`=Mock, `.jpg/.png`=OCR) |
 | `--use-ocr` | flag | 이미지 영수증 OCR 처리 활성화 |
@@ -445,6 +450,19 @@ python main.py [OPTIONS]
 ### 6.2 실행 예시
 
 ```bash
+# 0. POP3 메일 수신 모드
+# 기본 수신 (4/10 19:00 이후)
+python main.py --fetch-imap
+
+# 메일 수신 + OCR 처리
+python main.py --fetch-imap --use-ocr
+
+# 최대 메일 수 지정
+python main.py --fetch-imap --max-emails 20
+
+# 날짜 지정
+python main.py --fetch-imap --since-date "2026-04-01 00:00:00"
+
 # 1. 단일 이메일 + Mock 영수증 1건 (기본 테스트)
 python main.py \
   --email test_data/emails/email_normal_01.json \
@@ -641,7 +659,96 @@ CheckResult
   fail_and_warn() -> list[Violation]
 ```
 
-### 8.4 `core/email_parser.py`
+### 8.4 `core/email_receiver.py`
+
+```python
+# POP3 이메일 수신 모듈
+
+def decode_mime_words(header_value: str) -> str
+    # MIME 인코딩된 헤더를 디코딩
+
+def load_verified_slips() -> set
+    # 이미 검증 완료된 삼성 전표 번호 목록 로드
+    # 파일: logs/verified_emails.json
+
+def save_verified_slip(slip_number: str) -> None
+    # 검증 완료된 삼성 전표 번호 저장
+
+class POP3EmailReceiver:
+    """POP3 이메일 수신 클래스"""
+
+    def __init__(pop3_server, pop3_port, username, password)
+        # 기본값: .env 파일에서 로드
+        # POP3_SERVER=pop3.samsung.net
+        # POP3_PORT=995
+
+    def connect() -> bool
+        # POP3 서버 연결 (SSL)
+
+    def disconnect() -> None
+        # 연결 종료
+
+    def get_email_body(msg) -> str
+        # 이메일 본문 추출 (HTML → 텍스트 변환)
+
+    def get_attachments(msg, download_dir) -> list[dict]
+        # 첨부파일 추출 및 저장
+
+    def fetch_emails_by_subject(
+        subject_filter: str,      # 제목 필터
+        max_emails: int,          # 최대 검색 수
+        exclude_verified: bool,   # 검증 완료 메일 제외
+        since_date: datetime      # 수신 시작 날짜
+    ) -> list[dict]
+        # 제목 필터로 이메일 검색
+        # 반환: [{email_id, subject, from_name, from_email, date, body,
+        #         attachments, basic_info, detail_list, samsung_doc_no}]
+
+    def parse_basic_info(body: str) -> dict
+        # 이메일 본문에서 기본 정보 파싱
+        # 추출: 삼성 전표 번호, 발생 부서, 비용 귀속 부서, 신청자, 신청 일자
+
+    def parse_detail_info(body: str) -> list[dict]
+        # '상세 정보' 섹션 파싱
+        # 추출: 승인 번호, 업체, 사업자번호, 업종, 공급가액, 세액, 승인 금액
+
+    def email_to_json(email_info: dict, output_dir: str) -> str
+        # 수신한 이메일을 JSON 파일로 저장
+        # 저장 경로: temp/emails/email_{timestamp}_{subject}.json
+
+def fetch_credit_card_emails(
+    subject_filter: str,
+    max_emails: int,
+    exclude_verified: bool,
+    save_json: bool,
+    since_date: datetime
+) -> list[dict]
+    # 신용카드 경비 이메일 수신 (편의 함수)
+```
+
+**환경 설정 (.env)**
+
+```env
+# Samsung.net 로그인 설정
+SAMSUNG_ID=your_id
+SAMSUNG_PASSWORD=your_password
+
+# POP3 메일 수신 설정
+POP3_SERVER=pop3.samsung.net
+POP3_PORT=995
+```
+
+**검증 완료 전표 추적**
+
+```json
+// logs/verified_emails.json
+{
+  "verified_slips": ["DJ0120260331BA000297", ...],
+  "last_updated": "2026-04-13T20:00:00"
+}
+```
+
+### 8.5 `core/email_parser.py`
 
 ```python
 class EmailParser:
