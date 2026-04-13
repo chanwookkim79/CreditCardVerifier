@@ -8,8 +8,10 @@ POP3 이메일 수신 + PaddleOCR 기반 영수증 자동 점검 CLI 도구.
 |------|------|
 | 이메일 수신 | POP3로 `[myF] 신용카드 경비` 메일 자동 수신 |
 | 이메일 파싱 | SAP 이메일 → 구조화된 데이터 변환 |
-| OCR | 영수증 이미지 텍스트 추출 (PaddleOCR) |
+| 첨부파일 추출 | PDF/PPTX/XLSX/DOCX/DOC/PPT/XLS에서 영수증 이미지 자동 추출 |
+| OCR | 영수증 이미지 텍스트 추출 (PaddleOCR, 한글 특화) |
 | 교차 검증 | 이메일 본문 ↔ 영수증 15개 규칙 자동 검증 |
+| 중복 방지 | 삼성전표번호 기준 기처리 건 자동 스킵 |
 | 점검 리포트 | TXT 파일 저장 (`logs/reports/`) |
 | 로그 기록 | 상세 로그 CSV + 이메일 단위 결과 CSV |
 
@@ -27,11 +29,12 @@ CreditCardVerifier/
 │   ├── email_parser.py         # JSON → EmailData
 │   ├── receipt_parser.py       # OCR 텍스트 → ReceiptData
 │   ├── ocr_engine.py           # PaddleOCR 래퍼
+│   ├── attachment_extractor.py # PDF/PPT/Excel/Word → 이미지 추출
 │   ├── image_splitter.py       # 이미지 분할
 │   ├── multi_receipt_ocr.py    # 다중 영수증 OCR
 │   ├── cross_validator.py      # R01~R15 교차 검증
 │   ├── logger.py               # 콘솔 + CSV 로깅
-│   └── results_writer.py       # 결과 저장
+│   └── results_writer.py       # 결과 저장 + 중복 체크
 │
 ├── models/                     # 데이터 모델
 │   ├── email_data.py
@@ -55,14 +58,19 @@ CreditCardVerifier/
 │   └── reports/
 │
 └── docs/
-    └── GUIDE.md
+    ├── GUIDE.md
+    └── 사내망_설치_가이드.md
 ```
 
 ## 설치
 
 ```bash
-pip install -r requirements.txt
+pip install paddleocr paddlex paddlepaddle
+pip install python-pptx openpyxl python-docx
 ```
+
+> 사내망(방화벽/SSL 프록시) 환경은 `docs/사내망_설치_가이드.md` 참조.
+> 구형 DOC/PPT/XLS 변환은 [LibreOffice](https://www.libreoffice.org/download/) 별도 설치 필요 (DOCX/PPTX/XLSX는 불필요).
 
 ## 환경 설정
 
@@ -88,20 +96,20 @@ RECIPIENT_EMAILS=recipient@samsung.com
 
 ## 사용법
 
-### 메일 수신 모드
+### POP3 메일 수신 모드
 
 ```bash
-# 기본 수신 (4/10 19:00 이후)
-py main.py --fetch-imap
+# 기본 수신
+py main.py --fetch-pop3
 
 # 메일 수신 + OCR 처리
-py main.py --fetch-imap --use-ocr
+py main.py --fetch-pop3 --use-ocr
 
 # 최대 메일 수 지정
-py main.py --fetch-imap --max-emails 20
+py main.py --fetch-pop3 --max-emails 20
 
 # 날짜 지정
-py main.py --fetch-imap --since-date "2026-04-01 00:00:00"
+py main.py --fetch-pop3 --since-date "2026-04-01 00:00:00"
 ```
 
 ### 로컬 파일 처리 모드
@@ -110,8 +118,14 @@ py main.py --fetch-imap --since-date "2026-04-01 00:00:00"
 # 단일 이메일 + Mock 영수증
 py main.py --email test_data/emails/email_normal_01.json --receipt test_data/receipts/receipt_mock_01.json
 
-# 단일 이메일 + 실제 영수증 OCR
+# 단일 이메일 + 실제 이미지 OCR
 py main.py --email test_data/emails/email_normal_01.json --receipt 영수증.jpg --use-ocr
+
+# 단일 이메일 + PDF 첨부파일 (영수증 이미지 자동 추출 후 OCR)
+py main.py --email test_data/emails/email_normal_01.json --receipt 영수증.pdf --use-ocr
+
+# 단일 이메일 + Excel/Word 첨부파일
+py main.py --email test_data/emails/email_normal_01.json --receipt 경비내역.xlsx --use-ocr
 
 # 전체 테스트 데이터 일괄 처리
 py main.py --all-emails --mock-receipts
@@ -124,13 +138,13 @@ py main.py --email test_data/emails/email_vat_violation.json --receipt test_data
 
 | 옵션 | 타입 | 설명 |
 |------|------|------|
-| `--fetch-imap` | flag | POP3로 실제 메일 수신 |
+| `--fetch-pop3` | flag | POP3로 실제 메일 수신 후 처리 |
 | `--max-emails` | int | 수신 최대 메일 수 (기본: 10) |
 | `--since-date` | str | 수신 시작 날짜 (형식: YYYY-MM-DD HH:MM:SS) |
 | `--subject-filter` | str | 메일 제목 필터 (기본: '[myF] 신용카드 경비') |
 | `--email` | str | 이메일 JSON 파일 경로 |
-| `--receipt` | str+ | 영수증 파일 경로 (복수 지정 가능) |
-| `--use-ocr` | flag | 이미지 영수증 OCR 처리 |
+| `--receipt` | str+ | 영수증 파일 경로 — 이미지(`.jpg/.png`), PDF, PPTX, XLSX, DOCX 등 (복수 지정 가능) |
+| `--use-ocr` | flag | 이미지/문서 영수증 OCR 처리 활성화 |
 | `--all-emails` | flag | 테스트 데이터 전체 처리 |
 | `--mock-receipts` | flag | Mock 영수증 자동 매칭 |
 | `--json` | flag | JSON 형식 출력 |
