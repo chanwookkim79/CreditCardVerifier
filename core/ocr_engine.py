@@ -13,6 +13,26 @@ if sys.stderr.encoding != "utf-8":
 os.environ["PADDLE_PDX_DISABLE_MODEL_SOURCE_CHECK"] = "True"
 warnings.filterwarnings("ignore")
 
+# 회사 프록시 SSL 우회 패치
+import ssl
+import requests
+from requests.adapters import HTTPAdapter
+
+class _SSLIgnoreAdapter(HTTPAdapter):
+    def init_poolmanager(self, *args, **kwargs):
+        ctx = ssl.create_default_context()
+        ctx.check_hostname = False
+        ctx.verify_mode = ssl.CERT_NONE
+        kwargs['ssl_context'] = ctx
+        return super().init_poolmanager(*args, **kwargs)
+
+_orig_session_init = requests.Session.__init__
+def _patched_session_init(self, *args, **kwargs):
+    _orig_session_init(self, *args, **kwargs)
+    self.mount('https://', _SSLIgnoreAdapter())
+    self.verify = False
+requests.Session.__init__ = _patched_session_init
+
 import paddlex.inference.utils.pp_option as _pp_opt
 _orig_run_mode = _pp_opt.get_default_run_mode
 
