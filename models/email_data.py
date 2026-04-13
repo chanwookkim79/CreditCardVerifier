@@ -65,7 +65,7 @@ class Attachment:
 class EmailData:
     email_id: str
     subject: str           # 이메일 제목
-    samsung_doc_no: str    # 삼성 전표 번호 (참조용, 중복 점검 없음)
+    samsung_doc_no: str    # 삼성 전표 번호 (형식: DJ0120260227BA000074, 중복 점검 키)
     submitted_at: str
     submitter: Submitter
     approver: Approver
