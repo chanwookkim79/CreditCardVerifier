@@ -198,3 +198,183 @@ WARN → 수동 확인
 온라인 환경이라면 모든 전략 실패 시 Claude Vision API를 마지막 fallback으로 사용할 수 있다.
 
 적용 위치: `core/multi_receipt_ocr.py` → `core/ocr_retry.py` 별도 모듈로 분리 권장.
+
+---
+
+## 5. 자동 실행 및 합의 처리 자동화
+
+**Q. 10분마다 자동 실행해서 이메일 도착 시 영수증 분석 결과를 sender에게 피드백하려면?**
+
+A. 두 가지 구성이 필요하다.
+
+**스케줄러 (자동 실행)**
+
+| 방식 | 특징 |
+|------|------|
+| Windows Task Scheduler | 단순하고 안정적, PC 켜져 있어야 함 (권장) |
+| Python APScheduler | 단일 프로세스, 장기 실행 시 메모리 관리 필요 |
+
+**결과 피드백 구성**
+
+```
+POP3 수신 → 중복 체크 → 영수증 분석 → CheckResult
+    ↓
+이상 없음 → "점검 완료" 메일
+이상 있음 → "위반 항목 상세" 메일
+    ↓
+SMTP → sender 발송
+```
+
+구현 순서: 1단계 Task Scheduler 등록 → 2단계 결과 이메일 발송 → 3단계 운영 안정화.
+
+---
+
+**Q. 나는 합의 담당자인데 점검 결과를 합의 의견에 추가해야 한다. SMTP 발송과는 다른 문제 아닌가?**
+
+A. 맞다. SMTP는 새 메일을 보내는 것이고, 합의 의견 입력은 결재 시스템 내부에 텍스트를 넣는 것으로 완전히 다른 문제다.
+
+```
+SMTP 발송:   분석 결과 → 새 이메일 작성 → sender에게 발송
+합의 처리:   분석 결과 → 결재 시스템 의견란 입력 → 합의 처리
+```
+
+합의 처리 방식(이메일 회신, 앱 버튼, 웹 포털 등)에 따라 자동화 전략이 완전히 달라진다.
+
+---
+
+**Q. Knox Approval 별도 앱에서 합의하는데 VBA로 제어할 수 있나?**
+
+A. 불가능하다. 구조적인 문제다.
+
+```
+VBA 실행 환경: Windows PC / Microsoft Office
+Knox Approval: Android/iOS Knox 보안 컨테이너
+
+→ 완전히 다른 환경 — 연결 방법 없음
+```
+
+Knox의 설계 목적 자체가 외부 자동화·해킹 방지이므로 로그인 이후에도 컨테이너 외부에서 제어할 수 없다.
+
+현실적인 대안은 앞단 자동화 최대화 + 사람이 할 부분 최소화다.
+
+```
+자동 (시스템): 메일 수신 → 영수증 분석 → 합의 의견 생성 → 클립보드 복사 → 알림
+수동 (사람):   Knox Approval 열기 → 붙여넣기 → 합의 버튼 탭 (3번의 탭/클릭)
+```
+
+---
+
+**Q. Knox Approval이 PC 웹 브라우저로 접근 가능하다면 자동화할 수 있나?**
+
+A. 가능하다. Playwright 브라우저 자동화를 사용한다.
+
+**인증 전략**: SSO + 2FA는 매번 자동화 불가 → 최초 1회 수동 로그인 후 세션 저장, 이후 재사용.
+
+```python
+# 최초 1회: 수동 로그인 후 세션 저장
+context.storage_state(path="logs/knox_session.json")
+
+# 이후: 저장된 세션으로 자동 접속
+context = browser.new_context(storage_state="logs/knox_session.json")
+```
+
+**자동화 흐름**:
+```
+Knox Approval 웹 접속 (저장 세션)
+    ↓
+삼성전표번호로 문서 검색
+    ↓
+합의 의견란 자동 입력
+    ↓
+[사람] 최종 확인 후 합의 버튼 클릭  ← 책임이 따르므로 최종 제출은 사람이
+```
+
+세션 만료 시 클립보드 복사 + 알림으로 자동 fallback 처리한다.
+
+---
+
+## 6. Playwright 기술 사항
+
+**Q. Playwright와 Chrome의 차이점은?**
+
+A. Chrome은 브라우저(도구 자체), Playwright는 Chrome을 조종하는 리모컨이다.
+
+```
+Python 코드 → Playwright (제어 명령) → Chrome (실행) → 웹사이트
+```
+
+| 항목 | Chrome | Playwright |
+|------|--------|-----------|
+| 정체 | 웹 브라우저 | 브라우저 자동화 라이브러리 |
+| 만든 곳 | Google | Microsoft |
+| 하는 일 | 웹페이지 표시 | 브라우저 동작을 코드로 제어 |
+
+Selenium 대비 Playwright의 장점: 속도 빠름, 안정성 높음, 대기 처리 자동, 최신 웹앱 대응.
+
+---
+
+**Q. Playwright에서 화면 전환(1번 화면 → 2번 화면)이 가능한가?**
+
+A. 가능하다. 방법은 3가지다.
+
+**① 버튼/링크 클릭**
+```python
+page.click("text=합의")
+page.wait_for_selector("#opinion_textarea")  # 전환 완료 대기 필수
+```
+
+**② URL 직접 이동**
+```python
+page.goto(f"https://knox-approval.samsung.com/doc/{samsung_doc_no}")
+```
+
+**③ 팝업/모달 전환**
+```python
+with page.expect_popup() as popup_info:
+    page.click("#opinion_popup_btn")
+popup = popup_info.value
+popup.fill("#opinion", text)
+```
+
+핵심: 화면 전환 후 반드시 `wait_for_selector()`로 다음 화면 로드를 확인하고 진행해야 한다.
+
+---
+
+**Q. Playwright의 최대 해상도는 고정인가?**
+
+A. 고정이 아니다. 자유롭게 설정 가능하다.
+
+```python
+context = browser.new_context(
+    viewport={"width": 1920, "height": 1080}  # 원하는 해상도 지정
+)
+
+# 실행 중 변경도 가능
+page.set_viewport_size({"width": 1280, "height": 720})
+```
+
+4K(3840×2160)까지 설정 가능하며 Knox Approval 권장 설정:
+
+```python
+browser = p.chromium.launch(headless=False, args=["--start-maximized"])
+context = browser.new_context(no_viewport=True, locale="ko-KR",
+                               timezone_id="Asia/Seoul")
+```
+
+---
+
+**Q. Playwright 화면 자체는 큰데 표시되는 내용이 작고 나머지가 흰 여백인 이유는?**
+
+A. 뷰포트 설정 불일치 또는 deviceScaleFactor 문제다.
+
+| 원인 | 해결 |
+|------|------|
+| viewport가 작게 고정됨 | `viewport={"width": 1920, "height": 1080}`으로 확대 |
+| deviceScaleFactor=2 | `device_scale_factor=1`로 고정 |
+| 창 크기 < 뷰포트 | `no_viewport=True` + `--start-maximized` |
+
+현재 뷰포트 크기 확인:
+```python
+size = page.viewport_size
+print(f"현재 뷰포트: {size['width']} x {size['height']}")
+```
